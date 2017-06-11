@@ -6,44 +6,77 @@ class Schema {
 
   validate(object) {
     const objectKeys = Object.keys(this.schema)
-    let errors = {}
 
-    objectKeys.forEach(field => {
-      errors[field] = []
-
-      let valueToValidate = object[field]
+    const errors = objectKeys.map(field => {
+      const valueToValidate = object[field]
       const validators = this.schema[field]
+      const errors = this.validateField(field, valueToValidate, validators)
 
-      if (!valueToValidate) {
-        errors[field].push(this.missingFieldMessage(field))
-        return
+      return errors.length > 0 ? { [field]: errors } : null
+    }).filter(v => v != null)
+
+    const formatedErrors = this.formatErrors(errors)
+
+    return Object.keys(formatedErrors).length > 0 ? formatedErrors : null
+  }
+
+  validateField(field, valueToValidate, validators) {
+    let errorsOfField = []
+
+    if (!valueToValidate) {
+      if (this.options.strict) {
+        errorsOfField.push(this.missingFieldMessage(field))
       }
 
-      validators.forEach(validator => {
-        if (typeof validator === 'function') {
-          let validationFunc = validator
-          validator = { function: validationFunc }
-        }
+      return errorsOfField
+    }
 
-        if (validator.function(valueToValidate) === false) {
-          errors[field].push(validator.message || this.defaultErrorMessage(field))
-        }
-      })
+    if (!array(validators)) {
+      if (validators.function(valueToValidate) === false) {
+        errorsOfField.push(validators.message || this.defaultErrorMessage(field))
+      }
 
-      if (errors[field].length == 0) {
-        delete errors[field]
+      return errorsOfField
+    }
+
+    validators.forEach(validator => {
+      if (typeof validator === 'function') {
+        let validationFunc = validator
+        validator = { function: validationFunc }
+      }
+
+      if (validator.function(valueToValidate) === false) {
+        errorsOfField.push(validator.message || this.defaultErrorMessage(field))
       }
     })
 
-    return Object.keys(errors).length > 0 ? errors : null
+    return errorsOfField
+  }
+
+  formatErrors(errors) {
+    let formatedErrors = {}
+    errors.forEach(error => {
+      const fieldName = Object.keys(error)[0]
+      formatedErrors[fieldName] = error[fieldName]
+    })
+
+    return formatedErrors
   }
 
   missingFieldMessage(field) {
-    return `${this.options.objectName || 'Value'} ${field} is required`
+    if (this.options.objectName) {
+      return `${this.options.objectName} ${field} is required`
+    }
+
+    return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`
   }
 
   defaultErrorMessage(field) {
-    return `${this.options.objectName || 'Value'} ${field} is invalid`
+    if (this.options.objectName) {
+      return `${this.options.objectName} ${field} is invalid`
+    }
+
+    return `${field.charAt(0).toUpperCase() + field.slice(1)} is invalid`
   }
 }
 
@@ -58,6 +91,6 @@ const minLength = min => field => field.length >= min
 const maxLength = max => field => field.length <= max
 const email = field => EMAIL_REGEXP.test(field)
 const url = field => URL_REGEXP.test(field)
+const array = field => field.constructor === Array
 
-module.exports = { Schema, string, number, numeric, notEmpty, minLength, maxLength, email, url }
-
+module.exports = { Schema, string, number, numeric, notEmpty, minLength, maxLength, email, url, array }

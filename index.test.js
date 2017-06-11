@@ -1,4 +1,4 @@
-const { Schema, string, number, numeric, minLength, maxLength, notEmpty, email, url } = require('./index')
+const { Schema, string, number, numeric, minLength, maxLength, notEmpty, email, url, array } = require('./index')
 
 const productSchema = {
   name: [
@@ -22,23 +22,30 @@ test('it returns validation errors according to schema', () => {
       'Product name must contain minimum 5 characters'
     ],
     price: [
-      'Value price is invalid'
+      'Price is invalid'
     ]
   }
 
   expect(validationErrors).toEqual(expectedErrors)
 })
 
-test('it return validation error if validating object does not contains field defined in schema', () => {
+test('it returns "Field is required" error if strict mode is enabled and object does not contains field defined in schema', () => {
   const invalidProduct = {}
-  const validationErrors = new Schema(productSchema).validate(invalidProduct)
+  const validationErrors = new Schema(productSchema, { strict: true }).validate(invalidProduct)
 
   const expectedPriceErrors = {
-    name: ['Value name is required'],
-    price: ['Value price is required']
+    name: ['Name is required'],
+    price: ['Price is required']
   }
 
   expect(validationErrors).toEqual(expectedPriceErrors)
+})
+
+test('it doest not returns "Field is required" error if strict mode is disabled and object does not contains field defined in schema', () => {
+  const invalidProduct = {}
+  const validationErrors = new Schema(productSchema).validate(invalidProduct)
+
+  expect(validationErrors).toEqual(null)
 })
 
 test('it includes object name into error message', () => {
@@ -53,6 +60,25 @@ test('it includes object name into error message', () => {
 
   expect(validationErrors.price).toEqual(expectedPriceErrors)
 })
+
+test('it validates array according to schema', () => {
+  const basket = new Schema({
+    name: { function: string },
+    products: [
+      { message: 'Must be an array', function: array },
+      { message: 'Must contains at least one item', function: minLength(1) },
+    ]
+  })
+
+  const fullBasket = { name: 'test', products: ['apple', 'banana', 'orange'] }
+  const emptyBasket = { name: 'test', products: [] }
+  const invalidBasket = { name: 'test', products: 'invalid_value' }
+
+  expect(basket.validate(fullBasket)).toBe(null)
+  expect(basket.validate(emptyBasket)).toEqual({ products: ['Must contains at least one item'] })
+  expect(basket.validate(invalidBasket)).toEqual({ products: ['Must be an array'] })
+})
+
 
 test('validator string', () => {
   expect(string('Lorem ipsum')).toBe(true)
@@ -108,6 +134,13 @@ test('validator maxLength', () => {
   expect(maxLengthValidator('Lor')).toBe(true)
 
   expect(maxLengthValidator('Lorem ipsum')).toBe(false)
+})
+
+test('validator array', () => {
+  expect(array([])).toBe(true)
+  expect(array(['john'])).toBe(true)
+
+  expect(array('john')).toBe(false)
 })
 
 test('validator email', () => {

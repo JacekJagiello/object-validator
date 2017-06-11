@@ -1,6 +1,6 @@
 {
-  "name": "object-validator",
-  "version": "0.0.1",
+  "name": "@jacekjagiello/object-validator",
+  "version": "0.0.2",
   "description": "Simple javascript object validator",
   "main": "index.js",
   "repository": "JacekJagiello/object-validator",
