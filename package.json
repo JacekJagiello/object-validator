@@ -1,18 +1,42 @@
 {
   "name": "@jacekjagiello/object-validator",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simple javascript object validator",
-  "main": "index.js",
   "repository": "JacekJagiello/object-validator",
   "author": "Jacek Jagiello <jacekjagiello47@gmail.com>",
   "license": "MIT",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.esm.js",
   "engines": {
     "node": ">=6.1.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "prebuild": "rimraf dist",
+    "build": "tsc && rollup -c && rimraf compiled"
   },
   "devDependencies": {
-    "jest": "^20.0.4"
+    "@types/jest": "^20.0.6",
+    "jest": "^20.0.4",
+    "rimraf": "^2.6.1",
+    "rollup": "^0.45.2",
+    "rollup-plugin-commonjs": "^8.1.0",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "rollup-plugin-sourcemaps": "^0.4.2",
+    "rollup-plugin-typescript": "^0.8.1",
+    "ts-jest": "^20.0.7",
+    "typescript": "^2.4.2"
+  },
+  "jest": {
+    "transform": {
+      ".(ts)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "moduleFileExtensions": [
+      "ts",
+      "js"
+    ]
   }
 }

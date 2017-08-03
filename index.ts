@@ -1,13 +1,21 @@
-class Schema {
-  constructor(schemaObject, options = {}) {
-    this.schema = schemaObject
+export interface Options {
+  objectName?: string,
+  strict?: boolean
+}
+
+class Schema<T = {}> {
+  schema: any
+  options: Options
+
+  public constructor(schema, options: Options = {}) {
+    this.schema = schema
     this.options = options
   }
 
-  validate(object) {
-    const objectKeys = Object.keys(this.schema)
+  public validate(object): T {
+    const schemaKeys = Object.keys(this.schema)
 
-    const errors = objectKeys.map(field => {
+    const errors = schemaKeys.map(field => {
       const valueToValidate = object[field]
       const validators = this.schema[field]
       const errors = this.validateField(field, valueToValidate, validators)
@@ -20,7 +28,7 @@ class Schema {
     return Object.keys(formatedErrors).length > 0 ? formatedErrors : null
   }
 
-  validateField(field, valueToValidate, validators) {
+  private validateField(field, valueToValidate, validators) {
     let errorsOfField = []
 
     if (!valueToValidate) {
@@ -53,17 +61,15 @@ class Schema {
     return errorsOfField
   }
 
-  formatErrors(errors) {
-    let formatedErrors = {}
-    errors.forEach(error => {
+  private formatErrors(errors) {
+    return errors.reduce((formatedErrors, error) => {
       const fieldName = Object.keys(error)[0]
       formatedErrors[fieldName] = error[fieldName]
-    })
-
-    return formatedErrors
+      return formatedErrors
+    }, {})
   }
 
-  missingFieldMessage(field) {
+  private missingFieldMessage(field) {
     if (this.options.objectName) {
       return `${this.options.objectName} ${field} is required`
     }
@@ -71,7 +77,7 @@ class Schema {
     return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`
   }
 
-  defaultErrorMessage(field) {
+  private defaultErrorMessage(field) {
     if (this.options.objectName) {
       return `${this.options.objectName} ${field} is invalid`
     }
@@ -93,4 +99,4 @@ const email = field => EMAIL_REGEXP.test(field)
 const url = field => URL_REGEXP.test(field)
 const array = field => field.constructor === Array
 
-module.exports = { Schema, string, number, numeric, notEmpty, minLength, maxLength, email, url, array }
+export { Schema, string, number, numeric, notEmpty, minLength, maxLength, email, url, array }

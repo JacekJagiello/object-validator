@@ -1,4 +1,4 @@
-const { Schema, string, number, numeric, minLength, maxLength, notEmpty, email, url, array } = require('./index')
+import { Schema, string, number, numeric, minLength, maxLength, notEmpty, email, url, array } from './index'
 
 const productSchema = {
   name: [
@@ -8,13 +8,18 @@ const productSchema = {
   price: [ number ]
 }
 
+interface ProductInterface {
+  name: string,
+  price: number
+}
+
 test('it returns validation errors according to schema', () => {
   const invalidProduct = {
     name: 123,
     price: 'invalid-price'
   }
 
-  const validationErrors = new Schema(productSchema).validate(invalidProduct)
+  const validationErrors = new Schema<ProductInterface>(productSchema).validate(invalidProduct)
 
   const expectedErrors = {
     name: [
