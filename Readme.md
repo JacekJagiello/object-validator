@@ -14,12 +14,12 @@ This is simple object validator, based on provided schema. I use it for my perso
 ### Usage
 `yarn add @jacekjagiello/object-valiator`
 **OR**
-`npm install --save @jacekjagiello/object-valiator`
+`npm install --save @jacekjagiello/object-validator`
 
 Each key in productSchema is corresponding to the same key in an object you want to validate. Key contains an array of objects. Each object contains error message and validation function, which returns true if the value is valid, and false if it's not
 
 ```
-import { Schema, string, minLength } from '@jacekjagiello/object-valiator'
+import { Schema, string, minLength } from '@jacekjagiello/object-validator'
 
 const productSchema = {
   name: [
@@ -30,7 +30,9 @@ const productSchema = {
 
 const productToValidate = { name: 123 }
 
-const validationErrors = new Schema(productSchema).validate(invalidProduct)
+const validationErrors = new Schema(productSchema).validate(productToValidate)
+
+console.log(validationErrors)
 ```
 
 Output:
