@@ -1,34 +1,57 @@
-import { Schema, string, number, numeric, minLength, maxLength, notEmpty, email, url, array } from './index'
+import {
+  Schema,
+  string,
+  number,
+  numeric,
+  minLength,
+  maxLength,
+  notEmpty,
+  email,
+  url,
+  array,
+  required,
+} from './index'
 
 const productSchema = {
   name: [
     { message: 'Product name must be as string', function: string },
-    { message: 'Product name must contain minimum 5 characters', function: minLength(5) }
+    { message: 'Product name must contain minimum 5 characters', function: minLength(5) },
   ],
-  price: [ number ]
+  price: [number],
 }
 
 interface ProductInterface {
-  name: string,
+  name: string
   price: number
 }
 
 test('it returns validation errors according to schema', () => {
   const invalidProduct = {
     name: 123,
-    price: 'invalid-price'
+    price: 'invalid-price',
   }
 
   const validationErrors = new Schema<ProductInterface>(productSchema).validate(invalidProduct)
 
   const expectedErrors = {
-    name: [
-      'Product name must be as string',
-      'Product name must contain minimum 5 characters'
-    ],
-    price: [
-      'Price is invalid'
-    ]
+    name: ['Product name must be as string', 'Product name must contain minimum 5 characters'],
+    price: ['Price is invalid'],
+  }
+
+  expect(validationErrors).toEqual(expectedErrors)
+})
+
+test('it returns validation errors according to schema', () => {
+  const invalidProduct = {
+    name: 123,
+    price: 'invalid-price',
+  }
+
+  const validationErrors = new Schema<ProductInterface>(productSchema).validate(invalidProduct)
+
+  const expectedErrors = {
+    name: ['Product name must be as string', 'Product name must contain minimum 5 characters'],
+    price: ['Price is invalid'],
   }
 
   expect(validationErrors).toEqual(expectedErrors)
@@ -40,7 +63,7 @@ test('it returns "Field is required" error if strict mode is enabled and object 
 
   const expectedPriceErrors = {
     name: ['Name is required'],
-    price: ['Price is required']
+    price: ['Price is required'],
   }
 
   expect(validationErrors).toEqual(expectedPriceErrors)
@@ -48,18 +71,33 @@ test('it returns "Field is required" error if strict mode is enabled and object 
 
 test('it doest not returns "Field is required" error if strict mode is disabled and object does not contains field defined in schema', () => {
   const invalidProduct = {}
-  const validationErrors = new Schema(productSchema).validate(invalidProduct)
+  const validationErrors = new Schema(productSchema, { strict: false }).validate(invalidProduct)
 
-  expect(validationErrors).toEqual(null)
+  expect(validationErrors).toEqual({})
+})
+
+test('it returns "Filed is required" error, if stric mode is disabled, but required validator is added to field', () => {
+  const userData = {}
+  const validationErrors = new Schema(
+    {
+      email: { message: 'Email is required', validator: required },
+    },
+    { strict: true },
+  ).validate(userData)
+
+  const expectedEmailErrors = ['Email is required']
+
+  expect(validationErrors.email).toEqual(expectedEmailErrors)
 })
 
 test('it includes object name into error message', () => {
-  const objectName = 'Product'
   const invalidProduct = {
-    price: 'invalid-price'
+    price: 'invalid-price',
   }
 
-  const validationErrors = new Schema(productSchema, { objectName }).validate(invalidProduct)
+  const validationErrors = new Schema(productSchema, { objectName: 'Product' }).validate(
+    invalidProduct,
+  )
 
   const expectedPriceErrors = ['Product price is invalid']
 
@@ -72,18 +110,60 @@ test('it validates array according to schema', () => {
     products: [
       { message: 'Must be an array', function: array },
       { message: 'Must contains at least one item', function: minLength(1) },
-    ]
+    ],
   })
 
   const fullBasket = { name: 'test', products: ['apple', 'banana', 'orange'] }
   const emptyBasket = { name: 'test', products: [] }
   const invalidBasket = { name: 'test', products: 'invalid_value' }
 
-  expect(basket.validate(fullBasket)).toBe(null)
+  expect(basket.validate(fullBasket)).toEqual({})
   expect(basket.validate(emptyBasket)).toEqual({ products: ['Must contains at least one item'] })
   expect(basket.validate(invalidBasket)).toEqual({ products: ['Must be an array'] })
 })
 
+test('validateFiled validates single field from schema', () => {
+  const invalidProduct = {
+    price: 'invalid-price',
+  }
+
+  const validationErrors = new Schema(productSchema).validateField(invalidProduct, 'price')
+
+  const expectedPriceErrors = ['Price is invalid']
+
+  expect(validationErrors).toEqual(expectedPriceErrors)
+})
+
+test('validateField can be curried', () => {
+  const invalidProduct = {
+    price: 'invalid-price',
+  }
+
+  const validateField = new Schema(productSchema).validateField(invalidProduct)
+  const validationErrors = validateField('price')
+
+  const expectedPriceErrors = ['Price is invalid']
+
+  expect(validationErrors).toEqual(expectedPriceErrors)
+})
+
+test('validateField throws error if field does not exist in schema', () => {
+  const invalidProduct = {
+    price: 'invalid-price',
+  }
+
+  expect(() => {
+    new Schema(productSchema).validateField(invalidProduct, 'notExisting')
+  }).toThrow(`Field "notExisting" does not exist in defiend schema`)
+})
+
+test('validator required', () => {
+  expect(required('Lorem ipsum')).toBe(true)
+
+  expect(required(null)).toBe(false)
+  expect(required(undefined)).toBe(false)
+  expect(required('')).toBe(false)
+})
 
 test('validator string', () => {
   expect(string('Lorem ipsum')).toBe(true)

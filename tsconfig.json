@@ -7,7 +7,5 @@
     "removeComments": true,
     "outDir": "compiled"
   },
-  "files": [
-    "index.ts"
-  ]
+  "files": ["index.ts"]
 }

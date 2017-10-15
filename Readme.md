@@ -12,8 +12,10 @@ This is simple object validator, based on provided schema. I use it for my perso
 * Basic Typescript support
 
 ### Usage
-`yarn add @jacekjagiello/object-valiator`
+`yarn add @jacekjagiello/object-validator`
+
 **OR**
+
 `npm install --save @jacekjagiello/object-validator`
 
 Each key in productSchema is corresponding to the same key in an object you want to validate. Key contains an array of objects. Each object contains error message and validation function, which returns true if the value is valid, and false if it's not

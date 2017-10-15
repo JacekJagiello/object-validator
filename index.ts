@@ -1,13 +1,17 @@
 export interface Options {
-  objectName?: string,
+  objectName?: string
   strict?: boolean
 }
 
-class Schema<T = {}> {
+const defaultOptions = {
+  strict: false,
+}
+
+class Schema<T = any> {
   schema: any
   options: Options
 
-  public constructor(schema, options: Options = {}) {
+  public constructor(schema, options: Options = defaultOptions) {
     this.schema = schema
     this.options = options
   }
@@ -15,20 +19,38 @@ class Schema<T = {}> {
   public validate(object): T {
     const schemaKeys = Object.keys(this.schema)
 
-    const errors = schemaKeys.map(field => {
-      const valueToValidate = object[field]
-      const validators = this.schema[field]
-      const errors = this.validateField(field, valueToValidate, validators)
+    const errors = schemaKeys
+      .map(field => {
+        const valueToValidate = object[field]
+        const validators = this.schema[field]
+        const errors = this.validateSchemaField(field, valueToValidate, validators)
 
-      return errors.length > 0 ? { [field]: errors } : null
-    }).filter(v => v != null)
+        return errors.length > 0 ? { [field]: errors } : null
+      })
+      .filter(v => v != null)
 
-    const formatedErrors = this.formatErrors(errors)
-
-    return Object.keys(formatedErrors).length > 0 ? formatedErrors : null
+    return this.formatErrors(errors)
   }
 
-  private validateField(field, valueToValidate, validators) {
+  public validateField(object, field?: string): any {
+    if (!field) {
+      return (field: string) => this.validateField(object, field) as any
+    }
+
+    const fieldExist = Object.keys(this.schema).find(f => f === field) !== undefined
+
+    if (!fieldExist) {
+      throw new Error(`Field "${field}" does not exist in defiend schema`)
+    }
+
+    const valueToValidate = object[field]
+    const validators = this.schema[field]
+    const errors = this.validateSchemaField(field, valueToValidate, validators)
+
+    return errors.length > 0 ? errors : null
+  }
+
+  private validateSchemaField(field, valueToValidate, validators) {
     let errorsOfField = []
 
     if (!valueToValidate) {
@@ -70,16 +92,18 @@ class Schema<T = {}> {
   }
 
   private missingFieldMessage(field) {
-    if (this.options.objectName) {
-      return `${this.options.objectName} ${field} is required`
+    const { objectName } = this.options
+    if (objectName) {
+      return `${objectName} ${field} is required`
     }
 
     return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`
   }
 
   private defaultErrorMessage(field) {
-    if (this.options.objectName) {
-      return `${this.options.objectName} ${field} is invalid`
+    const { objectName } = this.options
+    if (objectName) {
+      return `${objectName} ${field} is invalid`
     }
 
     return `${field.charAt(0).toUpperCase() + field.slice(1)} is invalid`
@@ -89,6 +113,7 @@ class Schema<T = {}> {
 const EMAIL_REGEXP = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
 const URL_REGEXP = /[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/
 
+const required = field => field !== '' && field !== null && field !== undefined
 const string = field => typeof field === 'string'
 const number = field => typeof field === 'number'
 const numeric = field => !isNaN(parseFloat(field)) && isFinite(field)
@@ -99,4 +124,16 @@ const email = field => EMAIL_REGEXP.test(field)
 const url = field => URL_REGEXP.test(field)
 const array = field => field.constructor === Array
 
-export { Schema, string, number, numeric, notEmpty, minLength, maxLength, email, url, array }
+export {
+  Schema,
+  string,
+  number,
+  numeric,
+  notEmpty,
+  minLength,
+  maxLength,
+  email,
+  url,
+  array,
+  required,
+}
