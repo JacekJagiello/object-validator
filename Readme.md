@@ -9,7 +9,7 @@ This is simple object validator, based on provided schema. I use it for my perso
 * Zero dependency
 * Simple and flexible usage
 * Good test coverage
-* Basic Typescript support
+* Typescript support
 
 ### Usage
 `yarn add @jacekjagiello/object-validator`
@@ -18,28 +18,36 @@ This is simple object validator, based on provided schema. I use it for my perso
 
 `npm install --save @jacekjagiello/object-validator`
 
-Each key in productSchema is corresponding to the same key in an object you want to validate. Key contains an array of objects. Each object contains error message and validation function, which returns true if the value is valid, and false if it's not
+Each key in productSchema is corresponding to the same key in an object you want to validate. Key contains an array of rules. Each rule contains error message and validation function, which returns true if the value is valid, and false if not
 
 ```
-import { Schema, string, minLength } from '@jacekjagiello/object-validator'
+import { schema, string, number, minLength } from '@jacekjagiello/object-validator'
 
 const productSchema = {
   name: [
-    { message: 'Value must be as string', function: string },
-    { message: 'value must have minimum 5 chars', function: minLength(5) }
-  ]
+    { message: 'Name must be as string', validator: string },
+    { message: 'Name must contain minimum 5 characters', validator: minLength(5) },
+  ],
+  price: [{ message: 'Price must be a number', validator: number }],
 }
 
-const productToValidate = { name: 123 }
+const product = { name: 'A', price: null }
 
-const validationErrors = new Schema(productSchema).validate(productToValidate)
+const { validate } = schema(productSchema)
 
-console.log(validationErrors)
+const errors = validate(product)
+
+console.log(errors)
 ```
 
 Output:
 
-`{ name: ['Value must be as string'] }`
+```
+{
+  name: 'Name must contain minimum 5 characters',
+  price: 'Price must be a number'
+}
+```
 
 For more examples of usage **please read test file `index.test.ts`**
 

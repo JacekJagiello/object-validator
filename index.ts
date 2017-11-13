@@ -1,139 +1,65 @@
-export interface Options {
-  objectName?: string
-  strict?: boolean
+export type ValidatorFunction = (value: any) => boolean
+
+export interface ValidationRule {
+  message: string
+  validator: ValidatorFunction
 }
 
-const defaultOptions = {
-  strict: false,
-}
+export type ObjectSchema<T> = { [K in keyof T]: ValidationRule[] }
 
-class Schema<T = any> {
-  schema: any
-  options: Options
+const isFalse = (val: boolean) => val === false
+const notNull = (val: any) => val !== null
+const upperCaseFirstLetter = (val: string) => val.charAt(0).toUpperCase() + val.slice(1)
+const getKeys = <T>(object: T) => Object.keys(object) as Array<keyof T>
 
-  public constructor(schema, options: Options = defaultOptions) {
-    this.schema = schema
-    this.options = options
+export function schema<T>(objectSchema: ObjectSchema<T>) {
+  const validateRule = (value: any) => (rule: ValidationRule) => {
+    const isValid = rule.validator(value)
+    return isValid === false ? rule.message : null
   }
 
-  public validate(object): T {
-    const schemaKeys = Object.keys(this.schema)
-
-    const errors = schemaKeys
-      .map(field => {
-        const valueToValidate = object[field]
-        const validators = this.schema[field]
-        const errors = this.validateSchemaField(field, valueToValidate, validators)
-
-        return errors.length > 0 ? { [field]: errors } : null
-      })
-      .filter(v => v != null)
-
-    return this.formatErrors(errors)
-  }
-
-  public validateField(object, field?: string): any {
-    if (!field) {
-      return (field: string) => this.validateField(object, field) as any
+  function validateField(key: keyof T): (value: any) => string | null
+  function validateField(key: keyof T, value: any): string | null
+  function validateField(key: keyof T, value?: any) {
+    if (value === undefined) {
+      return (value: any) => validateField(key, value)
     }
 
-    const fieldExist = Object.keys(this.schema).find(f => f === field) !== undefined
-
-    if (!fieldExist) {
-      throw new Error(`Field "${field}" does not exist in defiend schema`)
+    const rules = objectSchema[key]
+    if (!rules) {
+      return null
     }
 
-    const valueToValidate = object[field]
-    const validators = this.schema[field]
-    const errors = this.validateSchemaField(field, valueToValidate, validators)
-
-    return errors.length > 0 ? errors : null
+    return rules.map(validateRule(value)).filter(notNull)[0]
   }
 
-  private validateSchemaField(field, valueToValidate, validators) {
-    let errorsOfField = []
-
-    if (!valueToValidate) {
-      if (this.options.strict) {
-        errorsOfField.push(this.missingFieldMessage(field))
-      }
-
-      return errorsOfField
-    }
-
-    if (!array(validators)) {
-      if (validators.function(valueToValidate) === false) {
-        errorsOfField.push(validators.message || this.defaultErrorMessage(field))
-      }
-
-      return errorsOfField
-    }
-
-    validators.forEach(validator => {
-      if (typeof validator === 'function') {
-        let validationFunc = validator
-        validator = { function: validationFunc }
-      }
-
-      if (validator.function(valueToValidate) === false) {
-        errorsOfField.push(validator.message || this.defaultErrorMessage(field))
-      }
-    })
-
-    return errorsOfField
+  function validate(object: T) {
+    return getKeys(objectSchema)
+      .map(key => ({
+        [key]: validateField(key, object[key]),
+      }))
+      .reduce((acc, next) => {
+        for (let key in next) acc[key] = next[key]
+        return acc
+      }, {})
   }
 
-  private formatErrors(errors) {
-    return errors.reduce((formatedErrors, error) => {
-      const fieldName = Object.keys(error)[0]
-      formatedErrors[fieldName] = error[fieldName]
-      return formatedErrors
-    }, {})
-  }
-
-  private missingFieldMessage(field) {
-    const { objectName } = this.options
-    if (objectName) {
-      return `${objectName} ${field} is required`
-    }
-
-    return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`
-  }
-
-  private defaultErrorMessage(field) {
-    const { objectName } = this.options
-    if (objectName) {
-      return `${objectName} ${field} is invalid`
-    }
-
-    return `${field.charAt(0).toUpperCase() + field.slice(1)} is invalid`
-  }
+  return { validate, validateField }
 }
 
 const EMAIL_REGEXP = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
 const URL_REGEXP = /[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/
 
-const required = field => field !== '' && field !== null && field !== undefined
-const string = field => typeof field === 'string'
-const number = field => typeof field === 'number'
-const numeric = field => !isNaN(parseFloat(field)) && isFinite(field)
-const notEmpty = field => field.length != 0
-const minLength = min => field => field.length >= min
-const maxLength = max => field => field.length <= max
-const email = field => EMAIL_REGEXP.test(field)
-const url = field => URL_REGEXP.test(field)
-const array = field => field.constructor === Array
-
-export {
-  Schema,
-  string,
-  number,
-  numeric,
-  notEmpty,
-  minLength,
-  maxLength,
-  email,
-  url,
-  array,
-  required,
-}
+export const required = (value: any) => value !== null && value !== undefined
+export const string = (value: any) => typeof value === 'string'
+export const number = (value: any) => typeof value === 'number'
+export const notEmpty = (value: any) => required(value) && value.length != 0
+export const email = (value: any) => EMAIL_REGEXP.test(value)
+export const url = (value: any) => URL_REGEXP.test(value)
+export const array = (value: any) => value.constructor === Array
+export const numeric = (value: any) =>
+  required(value) && !isNaN(parseFloat(value)) && isFinite(value)
+export const minLength = (minLenght: number) => (value: any) =>
+  required(value) && value.length && value.length >= minLenght
+export const maxLength = (maxLenght: number) => (value: any) =>
+  required(value) && value.length <= maxLenght
