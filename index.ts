@@ -2,7 +2,7 @@ export type ValidatorFunction = (value: any) => boolean
 
 export interface ValidationRule {
   message: string
-  validator: ValidatorFunction
+  validator: ValidatorFunction | ValidatorFunction[]
 }
 
 export type ObjectSchema<T> = { [K in keyof T]: ValidationRule[] }
@@ -14,8 +14,12 @@ const getKeys = <T>(object: T) => Object.keys(object) as Array<keyof T>
 
 export function schema<T>(objectSchema: ObjectSchema<T>) {
   const validateRule = (value: any) => (rule: ValidationRule) => {
-    const isValid = rule.validator(value)
-    return isValid === false ? rule.message : null
+    if (rule.validator instanceof Array) {
+      const isInvalid = rule.validator.map(validator => validator(value)).some(isFalse)
+      return isInvalid ? rule.message : null
+    }
+
+    return rule.validator(value) === false ? rule.message : null
   }
 
   function validateField(key: keyof T): (value: any) => string | null
@@ -60,6 +64,10 @@ export const array = (value: any) => value.constructor === Array
 export const numeric = (value: any) =>
   required(value) && !isNaN(parseFloat(value)) && isFinite(value)
 export const minLength = (minLenght: number) => (value: any) =>
-  required(value) && value.length && value.length >= minLenght
+  notEmpty(value) && value.length >= minLenght
 export const maxLength = (maxLenght: number) => (value: any) =>
-  required(value) && value.length <= maxLenght
+  notEmpty(value) && value.length <= maxLenght
+export const minNumbersInString = (minNumbers: number) => (value: any) =>
+  value.replace(/[^0-9]/g, '').length >= minNumbers
+export const maxNumbersInString = (maxNumbers: number) => (value: any) =>
+  value.replace(/[^0-9]/g, '').length <= maxNumbers

@@ -10,6 +10,8 @@ import {
   maxLength,
   email,
   url,
+  minNumbersInString,
+  maxNumbersInString,
 } from './index'
 
 interface Product {
@@ -20,17 +22,17 @@ interface Product {
 
 type PartialProduct = Partial<Product>
 
-const productSchema = {
+const productSchema = schema<PartialProduct>({
   name: [
     { message: 'Name must be as string', validator: string },
     { message: 'Name must contain minimum 5 characters', validator: minLength(5) },
   ],
   price: [{ message: 'Price must be a number', validator: number }],
-}
+})
 
 describe('validateField()', () => {
   test('validate single field according to schema', () => {
-    const { validateField } = schema<PartialProduct>(productSchema)
+    const { validateField } = productSchema
 
     expect(validateField('name', null)).toEqual('Name must be as string')
     expect(validateField('name', 123)).toEqual('Name must be as string')
@@ -38,7 +40,7 @@ describe('validateField()', () => {
   })
 
   test('works in curried mode', () => {
-    const { validateField } = schema<PartialProduct>(productSchema)
+    const { validateField } = productSchema
 
     const validatePrice = validateField('price')
 
@@ -47,7 +49,7 @@ describe('validateField()', () => {
   })
 
   test('do not validate field, which does not have rules in schema', () => {
-    const { validateField } = schema<PartialProduct>(productSchema)
+    const { validateField } = productSchema
 
     expect(validateField('description', null)).toEqual(null)
     expect(validateField('description', 'bla bla')).toEqual(null)
@@ -62,7 +64,7 @@ describe('validate()', () => {
       description: 'bla bla',
     }
 
-    const { validate } = schema<PartialProduct>(productSchema)
+    const { validate } = productSchema
 
     expect(validate(product)).toEqual({
       name: 'Name must contain minimum 5 characters',
@@ -72,14 +74,14 @@ describe('validate()', () => {
 })
 
 describe('validators functions', () => {
-  test('validator required', () => {
+  test('required', () => {
     expect(required('Lorem ipsum')).toBe(true)
 
     expect(required(null)).toBe(false)
     expect(required(undefined)).toBe(false)
   })
 
-  test('validator string', () => {
+  test('string', () => {
     expect(string('Lorem ipsum')).toBe(true)
     expect(string('123')).toBe(true)
     expect(string('')).toBe(true)
@@ -91,7 +93,7 @@ describe('validators functions', () => {
     expect(string(() => ({}))).toBe(false)
   })
 
-  test('validator number', () => {
+  test('number', () => {
     expect(number(123)).toBe(true)
     expect(number(1.23)).toBe(true)
 
@@ -102,7 +104,7 @@ describe('validators functions', () => {
     expect(number(() => ({}))).toBe(false)
   })
 
-  test('validator numeric', () => {
+  test('numeric', () => {
     expect(numeric(123)).toBe(true)
     expect(numeric(1.23)).toBe(true)
     expect(numeric('123')).toBe(true)
@@ -113,36 +115,38 @@ describe('validators functions', () => {
     expect(numeric(() => ({}))).toBe(false)
   })
 
-  test('validator notEmpty', () => {
+  test('notEmpty', () => {
     expect(notEmpty('Lorem ipsum')).toBe(true)
 
     expect(notEmpty('')).toBe(false)
   })
 
-  test('validator minLength', () => {
+  test('minLength', () => {
     const minLengthValidator = minLength(5)
 
     expect(minLengthValidator('Lorem ipsum')).toBe(true)
 
+    expect(minLengthValidator('')).toBe(false)
     expect(minLengthValidator('Lor')).toBe(false)
   })
 
-  test('validator maxLength', () => {
+  test('maxLength', () => {
     const maxLengthValidator = maxLength(5)
 
     expect(maxLengthValidator('Lor')).toBe(true)
+    expect(maxLengthValidator('12345')).toBe(true)
 
     expect(maxLengthValidator('Lorem ipsum')).toBe(false)
   })
 
-  test('validator array', () => {
+  test('array', () => {
     expect(array([])).toBe(true)
     expect(array(['john'])).toBe(true)
 
     expect(array('john')).toBe(false)
   })
 
-  test('validator email', () => {
+  test('email', () => {
     expect(email('john.doe@gmail.com')).toBe(true)
     expect(email('johndoe@exmaple.com')).toBe(true)
 
@@ -153,7 +157,7 @@ describe('validators functions', () => {
     expect(email('john!@#doe@gmail.com')).toBe(false)
   })
 
-  test('validator url', () => {
+  test('url', () => {
     expect(url('http://test.com')).toBe(true)
     expect(url('http://www.test.com')).toBe(true)
     expect(url('http://test-example.com')).toBe(true)
@@ -169,4 +173,41 @@ describe('validators functions', () => {
     expect(url('http://test:8000')).toBe(false)
     expect(url('http://test.com1')).toBe(false)
   })
+
+  test('minNumbersInString', () => {
+    const minNumbersInStringValidator = minNumbersInString(3)
+
+    expect(minNumbersInStringValidator('abcde12')).toBe(false)
+
+    expect(minNumbersInStringValidator('abcde123')).toBe(true)
+    expect(minNumbersInStringValidator('abcde123456')).toBe(true)
+  })
+
+  test('maxNumbersInString', () => {
+    const maxNumbersInStringValidator = maxNumbersInString(3)
+
+    expect(maxNumbersInStringValidator('abcde12')).toBe(true)
+    expect(maxNumbersInStringValidator('abcde123')).toBe(true)
+
+    expect(maxNumbersInStringValidator('abcde123456')).toBe(false)
+  })
+})
+
+test('validation rule supports array of validators', () => {
+  interface User {
+    shortName: string
+  }
+
+  const { validateField } = schema<User>({
+    shortName: [
+      {
+        message: 'Short name must be minimum 3 chars and maximum 5 chars',
+        validator: [minLength(3), maxLength(5)],
+      },
+    ],
+  })
+
+  const error = validateField('shortName', 'a')
+
+  expect(error).toEqual('Short name must be minimum 3 chars and maximum 5 chars')
 })
